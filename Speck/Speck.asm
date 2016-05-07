@@ -26,7 +26,6 @@ section .data
 
     ; Plain Text
     x: dq 0x65736f6874206e49
-    lenx: equ $-x
     y: dq 0x202e72656e6f6f70
     len: equ $-x
 
@@ -64,7 +63,7 @@ _start:
         mov     rdx, m1Len      ; Length of message
         call    Write           ; Display Now
         mov     rcx, x          ; Pass location of plaintext
-        mov     rdx, len        ; Pass size of ciphertext
+        mov     rdx, len        ; Pass size of entire plaintext
         call    Write           ; Display now
         mov     rcx, newLine    ; Add a new line
         mov     rdx, 1          ; New Line is one byte
