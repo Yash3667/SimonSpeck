@@ -166,9 +166,9 @@ expKey:
 ; The following assembly is a tranlsation of :-
 ; ---------------------------------------------------------------;
 ; encryptRound(k uint64, x uint64, y uint64) (uint64, uint64) {  ;
-;	 x = (rotR(x, alpha) + y) ^ k                                ;
-;	 y = rotL(y, beta) ^ x                                       ;
-;	 return x, y                                                 ;
+;   x = (rotR(x, alpha) + y) ^ k                                 ;
+;   y = rotL(y, beta) ^ x                                        ;
+;   return x, y                                                  ;
 ; }                                                              ;
 ; ---------------------------------------------------------------;
 ;
