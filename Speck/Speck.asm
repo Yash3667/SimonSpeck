@@ -73,11 +73,22 @@ _start:
         call    expKey          ; Expand the keys according to Speck algorithm
         call    encrypt         ; Encrypt the plain text
 
-; Test the first 4 Keys
+; Test a few keys
         mov     rcx, [k]
         mov     rcx, [k + 8]
         mov     rcx, [k + 16]
         mov     rcx, [k + 24]
+
+; Display the cipher text on the screen
+        mov     rcx, msg2       ; Display helpful message
+        mov     rdx, m2Len      ; length of message
+        call    Write           ; Display Now
+        mov     rcx, x          ; Pass location of ciphertext
+        mov     rdx, len        ; Pass size of entire ciphertext
+        call    Write           ; Display now
+        mov     rcx, newLine    ; Add a new line
+        mov     rdx, 1          ; New Line is one byte
+        call    Write           ; Display now
 
 ; Decrypt the cipher text
         call    decrypt            ; Decrypt the cipher text
