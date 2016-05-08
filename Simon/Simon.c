@@ -27,14 +27,13 @@ void decrypt(uint64_t* plaintext, uint64_t* key, int len){
 	keyExpansion(key);
 
 	for (i = 0; i < len - 1; i += 2){
-		for (j = 0; j < T; j++){
+		for (j = T - 1; j >= 0; j--){
 			Rinv(key + j, plaintext + i, plaintext + i + 1);
 		}
 	}
 }
 
 
-//Tested by hand, working as expected
 /*
  * Key expansion for the Simon block cipher.
  *
@@ -67,7 +66,6 @@ uint64_t* keyExpansion(uint64_t* k){
 }
 
 
-//Tested by hand, working as expected
 /*
  * A basic Simon round. 
  * Modifies the values at x and y.
