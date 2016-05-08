@@ -69,14 +69,17 @@ _start:
         mov     rdx, 1          ; New Line is one byte
         call    Write           ; Display now
 
-; Expand the keys and place them into k
+; Expand the keys and encrypt the plaintext
         call    expKey          ; Expand the keys according to Speck algorithm
+        call    encrypt         ; Encrypt the plain text
 
 ; Test Keys
         mov     rcx, [k]
         mov     rcx, [k + 8]
         mov     rcx, [k + 16]
         mov     rcx, [k + 24]
+        mov     rcx, [x]
+        mov     rcx, [y]
 
 Exit:
         mov     rax, 1          ; Service dispathcer uses 1 as sys_exit
@@ -132,9 +135,9 @@ expKey:
 ;
 ; RSI will maintain offset for l
 ; RBP will maintain offset for k
-; RDI will hold the maximum number of iterations (# of Rounds - 2)
+; RDI will hold the maximum number of iterations (# of Rounds - 1)
         xor     rcx, rcx        ; RCX will maintain the count
-        lea     rdi, [T - 2]    ; Max iteration is two less than T
+        lea     rdi, [T - 1]    ; Max iteration is one less than T
         lea     rsi, [m - 1]    ; RSI will maintain the offset for l
         lea     rbp, [rcx + 1]  ; RBP will maintain the offset for k.
                                 ; Using lea in above instruction for consistency
@@ -194,9 +197,38 @@ encRound:
 
 ;-------------------------------------------------------------------------------
 ; Procedure to encrypt the plaintext into ciphertext
-; Registers Used:
+; Registers Used: RAX, RBX, RCX, RDX, RDI
 ;
 ; The following assembly is a translation of :-
+;--------------------------------------------------;
+; for i := 0 i < T; i++ {                          ;
+;	x, y = encryptRound(k[i], x, y)                ;
+; }                                                ;
+;--------------------------------------------------;
+;
+; The encryption procedure using the same rotations
+; as the key expansion.
 encrypt:
+; This time RAX will maintain loop count
+; as RCX will need to hold the round key
+        xor     rax, rax        ; RAX will maintain count of the loop
+        mov     rdi, T          ; The loop needs to run for the # of rounds
+.eLoop:
+; RXC will hold the key for this round
+; RBX holds the higher 64 bits of the block
+; RDX holds the lower 64 bits of the block
+        mov     rcx, [k + rax*8]; Move this rounds key into RCX
+        mov     rbx, [x]        ; Move higher 64 bits into RBX
+        mov     rdx, [y]        ; Move lower 64 bits into RDX
+        call    encRound        ; Encrypt the plaintext using the algorithm
+        mov     [x], rbx        ; Save this value of RBX into x
+        mov     [y], rdx        ; Save this value of RDX into y
+
+; Prepare for next iteration of the loop
+        inc     rax             ; Increment RAX for next iteration
+        cmp     rax, rdi        ; Compare with # of rounds...
+        jne     .eLoop          ; ...and iterate again if not equal
+
+; Encryption over. Safe to return
         ret                     ; Return to caller
 ;-------------------------------------------------------------------------------
