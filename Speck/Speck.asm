@@ -69,14 +69,33 @@ _start:
         mov     rdx, 1          ; New Line is one byte
         call    Write           ; Display now
 
-; Expand the keys and place them into k
+; Expand the keys and encrypt the plaintext
         call    expKey          ; Expand the keys according to Speck algorithm
+        call    encrypt         ; Encrypt the plain text
 
-; Test Keys
+; Test a few keys
         mov     rcx, [k]
         mov     rcx, [k + 8]
         mov     rcx, [k + 16]
         mov     rcx, [k + 24]
+
+; Display the cipher text on the screen
+        mov     rcx, msg2       ; Display helpful message
+        mov     rdx, m2Len      ; length of message
+        call    Write           ; Display Now
+        mov     rcx, x          ; Pass location of ciphertext
+        mov     rdx, len        ; Pass size of entire ciphertext
+        call    Write           ; Display now
+        mov     rcx, newLine    ; Add a new line
+        mov     rdx, 1          ; New Line is one byte
+        call    Write           ; Display now
+
+; Decrypt the cipher text
+        call    decrypt            ; Decrypt the cipher text
+
+; Test the block. Should be same as the one initialized in .data
+        mov     rcx, [x]
+        mov     rcx, [y]
 
 Exit:
         mov     rax, 1          ; Service dispathcer uses 1 as sys_exit
@@ -132,9 +151,9 @@ expKey:
 ;
 ; RSI will maintain offset for l
 ; RBP will maintain offset for k
-; RDI will hold the maximum number of iterations (# of Rounds - 2)
+; RDI will hold the maximum number of iterations (# of Rounds - 1)
         xor     rcx, rcx        ; RCX will maintain the count
-        lea     rdi, [T - 2]    ; Max iteration is two less than T
+        lea     rdi, [T - 1]    ; Max iteration is one less than T
         lea     rsi, [m - 1]    ; RSI will maintain the offset for l
         lea     rbp, [rcx + 1]  ; RBP will maintain the offset for k.
                                 ; Using lea in above instruction for consistency
@@ -194,9 +213,114 @@ encRound:
 
 ;-------------------------------------------------------------------------------
 ; Procedure to encrypt the plaintext into ciphertext
+; Registers Used: RAX, RBX, RCX, RDX, RDI
+;
+; The following assembly is a translation of :-
+;--------------------------------------------------;
+; for i := 0 i < T; i++ {                          ;
+;   x, y = encryptRound(k[i], x, y)                ;
+; }                                                ;
+;--------------------------------------------------;
+;
+; The encryption procedure using the same rotations
+; as the key expansion.
+encrypt:
+; This time RAX will maintain loop count
+; as RCX will need to hold the round key
+        xor     rax, rax        ; RAX will maintain count of the loop
+        mov     rdi, T          ; The loop needs to run for the # of rounds
+.eLoop:
+; RCX will hold the key for this round
+; RBX holds the higher 64 bits of the block
+; RDX holds the lower 64 bits of the block
+        mov     rcx, [k + rax*8]; Move this rounds key into RCX
+        mov     rbx, [x]        ; Move higher 64 bits into RBX
+        mov     rdx, [y]        ; Move lower 64 bits into RDX
+        call    encRound        ; Encrypt the plaintext using the algorithm
+        mov     [x], rbx        ; Save this value of RBX into x
+        mov     [y], rdx        ; Save this value of RDX into y
+
+; Prepare for next iteration of the loop
+        inc     rax             ; Increment RAX for next iteration
+        cmp     rax, rdi        ; Compare with # of rounds...
+        jne     .eLoop          ; ...and iterate again if not equal
+
+; Encryption over. Safe to return
+        ret                     ; Return to caller
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Procedure to do decryption per round
+; Registers Used: RBX, RCX, RDX
+;
+; The following assembly is a tranlsation of :-
+; ---------------------------------------------------------------;
+; decryptRound(k uint64, x uint64, y uint64) (uint64, uint64) {  ;
+;   y = rotR(y ^ x, beta)                                        ;
+;   x = rotL((x ^ k) - y, alpha)                                 ;
+;   return x, y                                                  ;
+; }                                                              ;
+; ---------------------------------------------------------------;
+;
+; Parameter translation
+; -> k: RCX
+; -> x: RBX
+; -> y: RDX
+;
+; RBX and RDX are the registers which will be acted upon. Hence
+; no specific value is being returned.
+decRound:
+; y = rotR(y ^ x, beta)
+        xor     rdx, rbx        ; XOR RDX with RBX
+        ror     rdx, beta       ; Rotate RDX to the right by beta
+
+; x = rotL((x ^ k) - y, alpha)
+        xor    rbx, rcx         ; XOR RBX with RCX
+        sub    rbx, rdx         ; Subtract RDX from RBX
+        rol    rbx, alpha       ; Rotate RBX to the left by alpha
+
+; Round decryption over. Safe to return
+        ret                     ; Return to caller
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Procedure to decrypt ciphertext to plaintext
 ; Registers Used:
 ;
 ; The following assembly is a translation of :-
-encrypt:
+;---------------------------------------------;
+; for i := 0; i < T; i++ {                    ;
+;   x, y = decryptRound(k[T-i-1],x,y)         ;
+; }                                           ;
+;---------------------------------------------;
+;
+; The decrpytion procedure is different from the
+; encryption procedure by the order of the key
+; passed.
+decrypt:
+; RAX will maintain loop count
+; RSI will be used to hold key index
+; RCX will be used to hold key
+        xor     rax, rax        ; RAX will hold loop count
+        lea     rsi, [T - 1]    ; RSI will hold key index
+        mov     rdi, T          ; Loop needs be run for the # of rounds
+.dLoop:
+; RCX will hold the key for this round
+; RBX holds the higher 64 bits of the block
+; RDX holds the lower 64 bits of the block
+        mov     rcx, [k + rsi*8]; Hold the key for this round
+        mov     rbx, [x]        ; RBX holds higher 64 bits of cipher text
+        mov     rdx, [y]        ; RDX holds lower 64 bits of cipher text
+        call    decRound        ; Decrypt using the algorithm
+        mov     [x], rbx        ; Save this value of RBX into x
+        mov     [y], rdx        ; Save this value of RDX into y
+
+; Prepare for the next iteration of the loop
+        dec     rsi             ; Lower the index for the next round
+        inc     rax             ; Increment RAX for the next iteration
+        cmp     rax, rdi        ; Compare with # of rounds...
+        jne     .dLoop          ; ...and iterate again if not equal
+
+; Decryption Over. Safe to return
         ret                     ; Return to caller
 ;-------------------------------------------------------------------------------
