@@ -1,3 +1,5 @@
+Not currently functional.
+
 ### Simon
 
 Simon is implemented using a mixture of C and inline x86 assembly. The inline assembly greatly optimizes certain commands which are not natively supported in C (most notably, left circular shift).

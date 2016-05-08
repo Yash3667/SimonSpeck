@@ -9,9 +9,12 @@
 /* T is the number of rounds */
 # define	T	72
 /* c is used in key expansion */
-# define	c	18446744073709551612
+# define	C	18446744073709551612
 
-
-
-void R(uint64_t* k, uint64_t* x, uint64_t* y);
 uint64_t* keyExpansion(uint64_t* k);
+
+void encrypt(uint64_t* plaintext, uint64_t* key, int len);
+void R(uint64_t* k, uint64_t* x, uint64_t* y);
+
+void encrypt(uint64_t* plaintext, uint64_t* key, int len);
+void Rinv(uint64_t* k, uint64_t* x, uint64_t* y);

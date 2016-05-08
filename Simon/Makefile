@@ -1,5 +1,5 @@
-Simon: Simon.c
-	gcc -o Simon Simon.c
+Simon: Simon.c test.c
+	gcc -o Simon Simon.c test.c
 
 clean:
 	rm -f Simon
