@@ -6,10 +6,29 @@
  * Author: Justin Raizes
  */
 
- # include	"Simon.h"
+# include	"Simon.h"
+
 
 /*
- * A basic Simon round.
+ * Key expansion for the Simon block cipher.
+ *
+ * Allocates an array of size T (defined in Simon.h)
+ * that should be freed after completion of the cipher.
+ */
+uint64_t* keyExpansion(uint64_t* k){
+	uint64_t* keys = (uint64_t*) malloc(T * 8);
+	int i;
+
+	for (i = 0; i < T; i++){
+		/* TODO: fill in loop */
+	}
+
+	return keys;
+}
+
+/*
+ * A basic Simon round. 
+ * Modifies the values at x and y.
  */
 void R(uint64_t* k, uint64_t* x, uint64_t* y){
 	// Save x
