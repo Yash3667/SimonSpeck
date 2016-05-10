@@ -8,8 +8,6 @@
 
 /* T is the number of rounds */
 # define	T	72
-/* c is used in key expansion */
-# define	C	18446744073709551612
 
 uint64_t* keyExpansion(uint64_t* k);
 

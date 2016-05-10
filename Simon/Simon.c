@@ -38,24 +38,27 @@ void decrypt(uint64_t* plaintext, uint64_t* key, int len){
  * Key expansion for the Simon block cipher.
  *
  * k should be of length T (defined in Simon.h).
- * Modifies k.
+ * Modifies the values at k.
  */
 uint64_t* keyExpansion(uint64_t* k){
 	int i;
 	uint64_t tmp;
 
 	for (i = 4; i < T; i++){
+		/*	Inline assembly speeds up the circular shift,
+			which is not natively supported in c.
+		 */
 		asm __volatile__(
-			// save S(-3)k[i - 1] into a register
+			// Save S(-3)k[i - 1] into a register 
 			"mov	%1, %%rax \n\t"
 			"ror	$3, %%rax \n\t"
-			// xor that reg with k[i - 3]
+			// XOR that reg with k[i - 3]
 			"xor	%2, %%rax \n\t"
-			// xor that reg with S(-1) of that reg
+			// XOR that reg with itself S(-1)
 			"mov	%%rax, %%rbx \n\t"
 			"ror	$1, %%rbx \n\t"
 			"xor	%%rbx, %%rax \n\t"
-			// save into tmp
+			// Save into tmp
 			"mov	%%rax, %0"
 			: "=r" (tmp)
 			: "r" (k[i - 1]), "r" (k[i - 3])
@@ -85,7 +88,7 @@ void R(uint64_t* k, uint64_t* x, uint64_t* y){
 		which is not natively supported in c.
 	 */
 	asm __volatile__(
-		/* Load the original value of x into rax, rbx, rcx */
+		/* Load the original value at x into rax, rbx, rcx */
 		"mov	%1, %%rax \n\t"
 		"mov	%%rax, %%rbx \n\t"
 		"mov	%%rax, %%rcx \n\t"
@@ -99,7 +102,7 @@ void R(uint64_t* k, uint64_t* x, uint64_t* y){
 		"rol	$2, %%rcx \n\t"
 		"xor	%%rcx, %%rax \n\t"
 
-		/* XOR with current value of x and save */
+		/* XOR with the previous changes to *x and save */
 		"mov	%2, %%rbx \n\t"
 		"xor	%%rbx, %%rax \n\t"
 		"mov	%%rax, %0"
@@ -127,7 +130,7 @@ void Rinv(uint64_t* k, uint64_t* x, uint64_t* y){
 		which is not natively supported in c.
 	 */
 	asm __volatile__(
-		/* Load the original value of y into rax, rbx, rcx */
+		/* Load the original value at y into rax, rbx, rcx */
 		"mov	%1, %%rax \n\t"
 		"mov	%%rax, %%rbx \n\t"
 		"mov	%%rax, %%rcx \n\t"
@@ -141,7 +144,7 @@ void Rinv(uint64_t* k, uint64_t* x, uint64_t* y){
 		"rol	$2, %%rcx \n\t"
 		"xor	%%rcx, %%rax \n\t"
 
-		/* XOR with current value of y and save */
+		/* XOR with the previous changes to *y and save */
 		"mov	%2, %%rbx \n\t"
 		"xor	%%rbx, %%rax \n\t"
 		"mov	%%rax, %0"
