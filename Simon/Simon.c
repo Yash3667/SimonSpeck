@@ -12,8 +12,6 @@
 void encrypt(uint64_t* plaintext, uint64_t* key, int len){
 	int i, j;
 
-	keyExpansion(key);
-
 	for (i = 0; i < len - 1; i += 2){
 		for (j = 0; j < T; j++){
 			R(key + j, plaintext + i, plaintext + i + 1);
@@ -23,8 +21,6 @@ void encrypt(uint64_t* plaintext, uint64_t* key, int len){
 
 void decrypt(uint64_t* plaintext, uint64_t* key, int len){
 	int i, j;
-
-	keyExpansion(key);
 
 	for (i = 0; i < len - 1; i += 2){
 		for (j = T - 1; j >= 0; j--){
@@ -44,27 +40,34 @@ uint64_t* keyExpansion(uint64_t* k){
 	int i;
 	uint64_t tmp;
 
+	/* Reverse the order of k */
+	for (i = 0; i < 2; i++){
+		tmp = k[i];
+		k[i] = k[3 - i];
+		k[3 - i] = tmp;
+	}
+
 	for (i = 4; i < T; i++){
 		/*	Inline assembly speeds up the circular shift,
 			which is not natively supported in c.
 		 */
 		asm __volatile__(
-			// Save S(-3)k[i - 1] into a register 
+			/* Save S(-3)k[i - 1] into a register */
 			"mov	%1, %%rax \n\t"
-			"ror	$3, %%rax \n\t"
-			// XOR that reg with k[i - 3]
+			"rol	$-3, %%rax \n\t"
+			/* XOR that reg with k[i - 3] */
 			"xor	%2, %%rax \n\t"
-			// XOR that reg with itself S(-1)
+			/* XOR that reg with itself S(-1) */
 			"mov	%%rax, %%rbx \n\t"
-			"ror	$1, %%rbx \n\t"
+			"rol	$-1, %%rbx \n\t"
 			"xor	%%rbx, %%rax \n\t"
-			// Save into tmp
+			/* Save into tmp */
 			"mov	%%rax, %0"
 			: "=r" (tmp)
 			: "r" (k[i - 1]), "r" (k[i - 3])
 			: "rax", "rbx"
 			);
-		k[i] = ~k[i - 4] ^ tmp ^ GETBIT(Z4, i - 4) ^ 3;
+		k[i] = ~k[i - 4] ^ tmp ^ GETBIT(Z4, (i - 4) % 62) ^ 3;
 	}
 }
 
@@ -77,7 +80,7 @@ void R(uint64_t* k, uint64_t* x, uint64_t* y){
 	// Save x
 	uint64_t tmp = *x;
 
-	*x = *y ^ *k;
+	*x = *y;
 
 	/*	Compute f(x) = (S1x & S8x) ^ S2x, using the
 		original value of x (saved by tmp), where Sax 
@@ -111,6 +114,8 @@ void R(uint64_t* k, uint64_t* x, uint64_t* y){
 		:"r" (tmp), "r" (*x)
 		: "rax", "rbx", "rcx"
 		);
+
+	*x ^= *k;
 
 	*y = tmp;
 }
